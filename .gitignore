@@ -1,0 +1,13 @@
+# Ansible временные файлы
+*.retry
+__pycache__/
+*.pyc
+
+# Sensitive данные
+*.vault_pass
+vault_password_file
+group_vars/*/vault.yml
+
+# OS
+.DS_Store
+.idea/
