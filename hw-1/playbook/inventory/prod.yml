@@ -3,7 +3,19 @@
     hosts:
       centos7:
         ansible_connection: docker
+        ansible_python_interpreter: /usr/bin/python3.9
+
   deb:
     hosts:
       ubuntu:
+        ansible_connection: docker
+  
+  local:
+    hosts:
+      localhost:
+        ansible_connection: local
+
+  fedora:
+    hosts:
+      fedora:
         ansible_connection: docker
