@@ -1,0 +1,13 @@
+#cloud-config
+users:
+  - name: kva
+    groups: wheel
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICGCxz6Ttx4jaiMvpdANwl4va+6RTIWd+Vd8ylDNu1xD vboxuser@KVA
+
+package_update: true
+package_upgrade: false
+packages:
+  - python3
