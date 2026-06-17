@@ -48,51 +48,9 @@
 
 - name: Install Vector
   hosts: vector
-  handlers:
-    - name: Validate vector config
-      ansible.builtin.command:
-        cmd: "{{ vector_install_dir }}/bin/vector validate {{ vector_install_dir }}/config/vector.yml"
-      changed_when: false
-
-  tasks:
-    - name: Create vector install directory
-      ansible.builtin.file:
-        path: "{{ vector_install_dir }}"
-        state: directory
-        mode: "0755"
-      when: not ansible_check_mode
-
-    - name: Get Vector distrib
-      ansible.builtin.get_url:
-        url: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-musl.tar.gz"
-        dest: "/tmp/vector-{{ vector_version }}.tar.gz"
-        mode: "0644"
-      when: not ansible_check_mode
-
-    - name: Unarchive Vector
-      ansible.builtin.unarchive:
-        src: "/tmp/vector-{{ vector_version }}.tar.gz"
-        dest: "{{ vector_install_dir }}"
-        remote_src: true
-        extra_opts:
-          - "--strip-components=2"
-        creates: "{{ vector_install_dir }}/bin/vector"
-      when: not ansible_check_mode
-
-    - name: Create vector config directory
-      ansible.builtin.file:
-        path: "{{ vector_install_dir }}/config"
-        state: directory
-        mode: "0755"
-      when: not ansible_check_mode
-
-    - name: Deploy vector config
-      ansible.builtin.template:
-        src: vector.yml.j2
-        dest: "{{ vector_install_dir }}/config/vector.yml"
-        mode: "0644"
-      notify: Validate vector config
-      when: not ansible_check_mode
+  roles: 
+    - vector-role
+  
 
 - name: Install Lighthouse
   hosts: lighthouse
