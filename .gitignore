@@ -11,3 +11,6 @@ group_vars/*/vault.yml
 # OS
 .DS_Store
 .idea/
+# local repo
+vector-role/
+lighthouse-role/

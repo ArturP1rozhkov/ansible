@@ -1,0 +1,20 @@
+---
+all:
+  vars:
+    ansible_user: kva
+    ansible_python_interpreter: /usr/bin/python3
+
+clickhouse:
+  hosts:
+    clickhouse-01:
+      ansible_host: 93.77.182.122
+
+vector:
+  hosts:
+    vector-01:
+      ansible_host: 93.77.190.67
+
+lighthouse:
+  hosts:
+    lighthouse-01:
+      ansible_host: 51.250.90.29

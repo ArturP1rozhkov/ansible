@@ -1,0 +1,4 @@
+---
+lighthouse_url: "https://github.com/VKCOM/lighthouse/archive/refs/heads/master.zip"
+lighthouse_dir: "/usr/share/nginx/html/lighthouse"
+lighthouse_nginx_config: "/etc/nginx/conf.d/lighthouse.conf"

@@ -1,0 +1,167 @@
+---
+- name: Install Clickhouse
+  hosts: clickhouse
+  handlers:
+    - name: Start clickhouse service
+      become: true
+      ansible.builtin.service:
+        name: clickhouse-server
+        state: restarted
+  tasks:
+    - name: Get clickhouse distrib
+      block:
+        - name: Get clickhouse distrib
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
+            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+            mode: "0644"
+          with_items: "{{ clickhouse_packages }}"
+      rescue:
+        - name: Get clickhouse distrib
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
+            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+            mode: "0644"
+      when: not ansible_check_mode
+
+    - name: Install clickhouse packages
+      become: true
+      ansible.builtin.dnf:
+        name:
+          - clickhouse-common-static-{{ clickhouse_version }}.rpm
+          - clickhouse-client-{{ clickhouse_version }}.rpm
+          - clickhouse-server-{{ clickhouse_version }}.rpm
+        disable_gpg_check: true
+      notify: Start clickhouse service
+      when: not ansible_check_mode
+
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+      when: not ansible_check_mode
+
+    - name: Create database
+      ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
+      register: create_db
+      failed_when: create_db.rc != 0 and create_db.rc != 82
+      changed_when: create_db.rc == 0
+      when: not ansible_check_mode
+
+- name: Install Vector
+  hosts: vector
+  handlers:
+    - name: Validate vector config
+      ansible.builtin.command:
+        cmd: "{{ vector_install_dir }}/bin/vector validate {{ vector_install_dir }}/config/vector.yml"
+      changed_when: false
+
+  tasks:
+    - name: Create vector install directory
+      ansible.builtin.file:
+        path: "{{ vector_install_dir }}"
+        state: directory
+        mode: "0755"
+      when: not ansible_check_mode
+
+    - name: Get Vector distrib
+      ansible.builtin.get_url:
+        url: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-musl.tar.gz"
+        dest: "/tmp/vector-{{ vector_version }}.tar.gz"
+        mode: "0644"
+      when: not ansible_check_mode
+
+    - name: Unarchive Vector
+      ansible.builtin.unarchive:
+        src: "/tmp/vector-{{ vector_version }}.tar.gz"
+        dest: "{{ vector_install_dir }}"
+        remote_src: true
+        extra_opts:
+          - "--strip-components=2"
+        creates: "{{ vector_install_dir }}/bin/vector"
+      when: not ansible_check_mode
+
+    - name: Create vector config directory
+      ansible.builtin.file:
+        path: "{{ vector_install_dir }}/config"
+        state: directory
+        mode: "0755"
+      when: not ansible_check_mode
+
+    - name: Deploy vector config
+      ansible.builtin.template:
+        src: vector.yml.j2
+        dest: "{{ vector_install_dir }}/config/vector.yml"
+        mode: "0644"
+      notify: Validate vector config
+      when: not ansible_check_mode
+
+- name: Install Lighthouse
+  hosts: lighthouse
+  become: true
+
+  handlers:
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Install Nginx and unzip
+      ansible.builtin.dnf:
+        name:
+          - nginx
+          - unzip
+        state: present
+      when: not ansible_check_mode
+
+    - name: Create lighthouse directory
+      ansible.builtin.file:
+        path: "{{ lighthouse_dir }}"
+        state: directory
+        mode: "0755"
+      when: not ansible_check_mode
+
+    - name: Create temporary directory for Lighthouse archive
+      ansible.builtin.file:
+        path: /tmp/lighthouse
+        state: directory
+        mode: "0755"
+      when: not ansible_check_mode
+
+    - name: Download Lighthouse archive
+      ansible.builtin.get_url:
+        url: "{{ lighthouse_url }}"
+        dest: "/tmp/lighthouse.zip"
+        mode: "0644"
+      when: not ansible_check_mode
+
+    - name: Unarchive Lighthouse
+      ansible.builtin.unarchive:
+        src: "/tmp/lighthouse.zip"
+        dest: "/tmp/lighthouse"
+        remote_src: true
+        creates: "/tmp/lighthouse/lighthouse-master/index.html"
+      when: not ansible_check_mode
+
+    - name: Copy Lighthouse files
+      ansible.builtin.copy:
+        src: "/tmp/lighthouse/lighthouse-master/"
+        dest: "{{ lighthouse_dir }}/"
+        remote_src: true
+        mode: preserve
+      notify: Restart nginx
+      when: not ansible_check_mode
+
+    - name: Deploy Nginx config
+      ansible.builtin.template:
+        src: lighthouse_nginx.conf.j2
+        dest: "{{ lighthouse_nginx_config }}"
+        mode: "0644"
+      notify: Restart nginx
+      when: not ansible_check_mode
+
+    - name: Start Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      when: not ansible_check_mode
